@@ -1,0 +1,14 @@
+# local-only, never tracked
+logs/
+
+# Go
+/dist/
+/kubectl-env_diff
+*.test
+*.out
+coverage.*
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/
