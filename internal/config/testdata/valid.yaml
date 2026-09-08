@@ -1,0 +1,7 @@
+normalize:
+  stripSuffixes: ["-staging", "-prod"]
+ignore:
+  - path: "container[*].env.DATADOG_ENV"
+  - path: "replicas"
+  - kind: ConfigMap
+    name: aws-auth
