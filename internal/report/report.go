@@ -155,3 +155,20 @@ func (r Report) Missing(typ model.DiffType) []model.Difference {
 	}
 	return out
 }
+
+// displayValues resolves the strings shown for a difference, substituting the
+// missing marker and the redaction placeholders. Shared by every renderer so
+// they cannot diverge on how a redacted difference is presented.
+func displayValues(d model.Difference) (string, string) {
+	if d.Redacted && d.Type == model.ValueChanged {
+		return "<redacted>", "<redacted, differs>"
+	}
+	from, to := d.From, d.To
+	if from == "" && d.Type == model.MissingInFrom {
+		from = "(missing)"
+	}
+	if to == "" && d.Type == model.MissingInTo {
+		to = "(missing)"
+	}
+	return from, to
+}
