@@ -1,0 +1,18 @@
+## env-diff: staging/web to prod-au/web
+
+**12 resources** - 9 identical - **2 drifted** - 1 missing
+
+| Kind | Resource | Field | staging | prod-au |
+|---|---|---|---|---|
+| Deployment | checkout | container[checkout].env.FEATURE_FLAG_X | (missing) | true |
+| Deployment | checkout | container[checkout].env.DB_PASSWORD | &lt;redacted&gt; | &lt;redacted, differs&gt; |
+| Deployment | checkout | container[checkout].env.LOG_LEVEL | debug | info |
+| Deployment | checkout | container[checkout].resources.limits.memory | 4Gi | 512Mi |
+| ConfigMap | app-config | data.KAFKA_BROKERS | (missing) | b-1.msk.internal:9092 |
+
+### Missing in prod-au/web
+
+- Deployment/notifier
+
+_1 expected difference hidden (image tag, replicas)._
+
