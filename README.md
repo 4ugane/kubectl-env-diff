@@ -28,14 +28,14 @@ names to dashes).
 
 ```
 # whole namespace
-kubectl env-diff --from staging/web --to prod-au/web
+kubectl env-diff --from staging/web --to prod/web
 
 # one workload, same name on both sides
-kubectl env-diff --from staging/web --to prod/web --name checkout
+kubectl env-diff --from staging/web --to prod/web --name api
 
 # names differ between environments
 kubectl env-diff --from staging/web --to prod/web \
-    --from-name test-staging --to-name test-prod
+    --from-name api-staging --to-name api-prod
 
 # shareable report
 kubectl env-diff --from staging/web --to prod/web --output html > drift.html
@@ -47,22 +47,22 @@ kubectl env-diff --from staging/web --to prod/web --output html > drift.html
 ## Example
 
 ```
-kubectl env-diff --from staging/web --to prod-au/web
+kubectl env-diff --from staging/web --to prod/web
 
 SUMMARY   12 resources - 9 identical - 2 drifted - 1 missing
 
-DRIFT  Deployment/checkout
-  container[checkout].env.FEATURE_FLAG_X      (missing)  -> true
-  container[checkout].env.LOG_LEVEL           debug      -> info
-  container[checkout].env.DB_PASSWORD         <redacted> -> <redacted, differs>
-  container[checkout].resources.limits.memory 4Gi        -> 512Mi
-  container[checkout].probes.readiness.target /healthz:8080 -> /health:8080
+DRIFT  Deployment/api
+  container[api].env.FEATURE_FLAG_X      (missing)  -> true
+  container[api].env.LOG_LEVEL           debug      -> info
+  container[api].env.DB_PASSWORD         <redacted> -> <redacted, differs>
+  container[api].resources.limits.memory 4Gi        -> 512Mi
+  container[api].probes.readiness.target /healthz:8080 -> /health:8080
 
 DRIFT  ConfigMap/app-config
-  data.KAFKA_BROKERS                        (missing)  -> b-1.msk.internal:9092
+  data.KAFKA_BROKERS                     (missing)  -> b-1.msk.internal:9092
 
-MISSING IN prod-au/web
-  Deployment/notifier
+MISSING IN prod/web
+  Deployment/worker
 
 1 expected difference hidden (image tag, replicas) - --show-expected to display
 ```
