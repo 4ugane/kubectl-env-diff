@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>env-diff: {{.Summary.FromContext}} to {{.Summary.ToContext}}</title>
+<style>
+:root {
+  --bg: #fff; --fg: #1a1a1a; --muted: #666; --line: #e2e2e2;
+  --drift: #b91c1c; --miss: #b45309; --ok: #15803d;
+  --s0: #f6f6f6; --s1: #fee2e2; --s2: #fca5a5; --s3: #f87171; --s4: #dc2626;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17181a; --fg: #e8e8e8; --muted: #9a9a9a; --line: #2e3033;
+    --drift: #f87171; --miss: #fbbf24; --ok: #4ade80;
+    --s0: #212325; --s1: #4c1d1d; --s2: #7f1d1d; --s3: #b91c1c; --s4: #ef4444;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 2rem 1.25rem; background: var(--bg); color: var(--fg);
+  font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+main { max-width: 1180px; margin: 0 auto; }
+h1 { font-size: 1.3rem; margin: 0 0 .35rem; font-weight: 650; }
+h2 { font-size: 1rem; margin: 2.25rem 0 .75rem; font-weight: 650; }
+.ctx { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9rem; }
+.sum { color: var(--muted); margin: 0 0 1.5rem; }
+.sum b { color: var(--fg); }
+.warn {
+  border-left: 3px solid var(--drift); background: var(--s1);
+  padding: .8rem 1rem; margin: 0 0 1.5rem; border-radius: 0 4px 4px 0;
+}
+.warn p { margin: 0 0 .4rem; font-weight: 600; }
+.warn ul { margin: 0; padding-left: 1.2rem; }
+.wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; font-size: .875rem; }
+th, td {
+  text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+th { font-weight: 600; color: var(--muted); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.path, td.val {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem;
+  word-break: break-word; max-width: 24rem;
+}
+td.from { color: var(--muted); }
+td.to { color: var(--drift); }
+.tag {
+  display: inline-block; font-size: .7rem; padding: .1rem .4rem;
+  border-radius: 3px; background: var(--s1); color: var(--drift);
+  text-transform: uppercase; letter-spacing: .03em;
+}
+.tag.exp { background: var(--s0); color: var(--muted); }
+.heat td, .heat th { text-align: center; padding: .4rem .5rem; }
+.heat th:first-child, .heat td:first-child { text-align: left; }
+.cell {
+  display: block; min-width: 2rem; padding: .3rem 0; border-radius: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.s0 { background: var(--s0); color: var(--muted); }
+.s1 { background: var(--s1); } .s2 { background: var(--s2); }
+.s3 { background: var(--s3); color: #fff; } .s4 { background: var(--s4); color: #fff; }
+#filter {
+  width: 100%; max-width: 22rem; padding: .45rem .6rem; margin: 0 0 .75rem;
+  border: 1px solid var(--line); border-radius: 5px;
+  background: var(--bg); color: var(--fg); font-size: .875rem;
+}
+.none { color: var(--ok); font-weight: 600; }
+ul.miss { list-style: none; padding: 0; margin: 0; }
+ul.miss li {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .85rem; padding: .2rem 0; color: var(--miss);
+}
+footer { margin-top: 2.5rem; color: var(--muted); font-size: .78rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>env-diff</h1>
+  <p class="ctx">{{.Summary.FromContext}}/{{.Summary.FromNamespace}}
+    &rarr; {{.Summary.ToContext}}/{{.Summary.ToNamespace}}</p>
+  <p class="sum">
+    <b>{{.Summary.Pairs}}</b> resources &middot;
+    {{.Summary.Identical}} identical &middot;
+    <b>{{.Summary.Drifted}}</b> drifted &middot;
+    {{add .Summary.MissingInFrom .Summary.MissingInTo}} missing
+  </p>
+
+  {{if .Incomplete}}
+  <div class="warn">
+    <p>This comparison is incomplete.</p>
+    <ul>
+      {{range .Summary.Skipped}}<li>{{.Kind}}: {{.Reason}}</li>{{end}}
+    </ul>
+    <p style="margin:.5rem 0 0;font-weight:400">Treat everything below as partial.</p>
+  </div>
+  {{end}}
+
+  {{with .Heatmap}}
+  <h2>Drift heatmap</h2>
+  <div class="wrap">
+    <table class="heat">
+      <thead><tr><th>Resource</th>{{range .Categories}}<th>{{.}}</th>{{end}}</tr></thead>
+      <tbody>
+        {{$max := .Max}}{{$cats := .Categories}}
+        {{range .Rows}}
+        <tr>
+          <td>{{.Kind}}/{{.Name}}</td>
+          {{$counts := .Counts}}
+          {{range $cats}}
+          {{$n := count $counts .}}
+          <td><span class="cell {{shade $n $max}}">{{if $n}}{{$n}}{{else}}&middot;{{end}}</span></td>
+          {{end}}
+        </tr>
+        {{end}}
+      </tbody>
+      <tfoot>
+        <tr><th>all</th>{{range .Categories}}<th>{{count $.Heatmap.CategoryTotals .}}</th>{{end}}</tr>
+      </tfoot>
+    </table>
+  </div>
+  {{end}}
+
+  {{if .Rows}}
+  <h2>Differences</h2>
+  <input id="filter" type="search" placeholder="Filter by resource or field&hellip;"
+         aria-label="Filter differences">
+  <div class="wrap">
+    <table id="diffs">
+      <thead>
+        <tr>
+          <th>Kind</th><th>Resource</th><th>Field</th>
+          <th>{{.Summary.FromContext}}</th><th>{{.Summary.ToContext}}</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Rows}}
+        <tr>
+          <td>{{.Kind}}</td>
+          <td>{{.Name}}</td>
+          <td class="path">{{.Path}}</td>
+          <td class="val from">{{.From}}</td>
+          <td class="val to">{{.To}}</td>
+          <td>{{if eq .Severity "Expected"}}<span class="tag exp">expected</span>
+              {{else}}<span class="tag">{{.Type}}</span>{{end}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{end}}
+
+  {{if .MissingInTo}}
+  <h2>Missing in {{.Summary.ToContext}}/{{.Summary.ToNamespace}}</h2>
+  <ul class="miss">{{range .MissingInTo}}<li>{{.Kind}}/{{.Name}}</li>{{end}}</ul>
+  {{end}}
+
+  {{if .MissingInFrom}}
+  <h2>Missing in {{.Summary.FromContext}}/{{.Summary.FromNamespace}}</h2>
+  <ul class="miss">{{range .MissingInFrom}}<li>{{.Kind}}/{{.Name}}</li>{{end}}</ul>
+  {{end}}
+
+  {{if and (not .Rows) (not .MissingInTo) (not .MissingInFrom) (not .Incomplete)}}
+  <p class="none">No drift found.</p>
+  {{end}}
+
+  <footer>
+    {{if and (not .ShowExpected) .Summary.ExpectedHidden}}
+      {{.Summary.ExpectedHidden}} expected difference(s) hidden (image tag, replicas).
+    {{end}}
+    Generated by kubectl-env-diff. Secret values are never read.
+  </footer>
+</main>
+<script>
+// The only hand-written script: filter rows. Collapse uses native details.
+document.getElementById('filter')?.addEventListener('input', function (e) {
+  var q = e.target.value.toLowerCase();
+  document.querySelectorAll('#diffs tbody tr').forEach(function (tr) {
+    tr.hidden = q !== '' && !tr.textContent.toLowerCase().includes(q);
+  });
+});
+</script>
+</body>
+</html>
