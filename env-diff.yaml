@@ -1,0 +1,47 @@
+apiVersion: krew.googlecontainertools.github.com/v1alpha2
+kind: Plugin
+metadata:
+  name: env-diff
+spec:
+  version: v0.1.0
+  homepage: https://github.com/4ugane/kubectl-env-diff
+  shortDescription: Compare workload config between two live clusters
+  description: |
+    Compares Deployments, StatefulSets, ConfigMaps, and non-sensitive
+    environment variables between two kubeconfig contexts, highlighting
+    configuration drift and missing keys.
+
+    Never calls the Secrets API: it requires no permission on secrets and
+    reports only the secret names and keys that pod specs reference.
+  caveats: |
+    Requires get and list on deployments, statefulsets, and configmaps in both
+    namespaces. See docs/rbac.yaml for a minimal Role.
+  platforms:
+    - selector:
+        matchLabels:
+          os: darwin
+          arch: arm64
+      uri: https://github.com/4ugane/kubectl-env-diff/releases/download/v0.1.0/kubectl-env-diff_0.1.0_darwin_arm64.tar.gz
+      sha256: "<FILL FROM checksums.txt>"
+      bin: kubectl-env_diff
+    - selector:
+        matchLabels:
+          os: darwin
+          arch: amd64
+      uri: https://github.com/4ugane/kubectl-env-diff/releases/download/v0.1.0/kubectl-env-diff_0.1.0_darwin_amd64.tar.gz
+      sha256: "<FILL FROM checksums.txt>"
+      bin: kubectl-env_diff
+    - selector:
+        matchLabels:
+          os: linux
+          arch: amd64
+      uri: https://github.com/4ugane/kubectl-env-diff/releases/download/v0.1.0/kubectl-env-diff_0.1.0_linux_amd64.tar.gz
+      sha256: "<FILL FROM checksums.txt>"
+      bin: kubectl-env_diff
+    - selector:
+        matchLabels:
+          os: linux
+          arch: arm64
+      uri: https://github.com/4ugane/kubectl-env-diff/releases/download/v0.1.0/kubectl-env-diff_0.1.0_linux_arm64.tar.gz
+      sha256: "<FILL FROM checksums.txt>"
+      bin: kubectl-env_diff

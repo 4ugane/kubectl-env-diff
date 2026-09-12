@@ -1,0 +1,33 @@
+# Minimal read-only RBAC for kubectl-env-diff.
+#
+# Grants exactly what the tool needs: get/list on Deployments, StatefulSets,
+# and ConfigMaps. There is deliberately no rule for Secrets — the tool never
+# calls the Secrets API, so it needs no permission on them. Apply this Role
+# (and a matching RoleBinding) in every namespace you want to compare.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: env-diff-reader
+  namespace: <NAMESPACE>
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list"]
+# No secrets rule. kubectl-env-diff never reads Secret values.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: env-diff-reader
+  namespace: <NAMESPACE>
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: env-diff-reader
+subjects:
+  - kind: User
+    name: <YOUR-USER>
+    apiGroup: rbac.authorization.k8s.io
