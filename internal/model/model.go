@@ -26,12 +26,29 @@ const (
 
 // EnvValue is one environment variable. For inline values, Value is already
 // redacted when the key looks sensitive — the raw value is never stored.
+//
+// Fingerprint is a one-way marker of a redacted value's original content,
+// present only when Redacted is true. It exists so that two masked values can
+// be compared for equality without either raw value ever being stored or
+// displayed — without it, every redacted value would look identical and a
+// rotated credential would silently vanish from the report.
 type EnvValue struct {
-	Kind     EnvKind
-	Value    string
-	Source   string
-	Optional bool
-	Redacted bool
+	Kind        EnvKind
+	Value       string
+	Source      string
+	Optional    bool
+	Redacted    bool
+	Fingerprint string
+}
+
+// Equal reports whether two EnvValues represent the same underlying value.
+// Redacted values are compared by fingerprint, never by their shared
+// placeholder text, so a differing credential is still detected as different.
+func (e EnvValue) Equal(o EnvValue) bool {
+	if e.Redacted || o.Redacted {
+		return e.Redacted == o.Redacted && e.Fingerprint == o.Fingerprint
+	}
+	return e.Display() == o.Display()
 }
 
 // Display renders the value for output.
@@ -96,12 +113,18 @@ type Workload struct {
 
 // ConfigMap holds comparable ConfigMap contents. Binary entries are summarized,
 // never dumped.
+//
+// Fingerprints holds a one-way marker for each key masked in Data because its
+// name looked sensitive, keyed the same as Data. It lets two masked entries be
+// compared for equality without the raw value ever being stored or displayed;
+// a key absent from Fingerprints was not masked.
 type ConfigMap struct {
-	Kind      Kind
-	Name      string
-	Namespace string
-	Data      map[string]string
-	Immutable bool
+	Kind         Kind
+	Name         string
+	Namespace    string
+	Data         map[string]string
+	Fingerprints map[string]string
+	Immutable    bool
 }
 
 // DataKeys returns ConfigMap keys in sorted order.

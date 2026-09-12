@@ -7,6 +7,8 @@
 package redact
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"strings"
 	"unicode"
 )
@@ -85,4 +87,14 @@ func Value(key, value string) string {
 		return Placeholder
 	}
 	return value
+}
+
+// Fingerprint returns a one-way, non-reversible marker for a sensitive value:
+// the same input always yields the same fingerprint, and different inputs
+// (almost certainly) yield different ones. It exists purely so that a
+// comparison can tell two masked values apart without either raw value ever
+// being stored, displayed, or otherwise recoverable from the fingerprint.
+func Fingerprint(value string) string {
+	sum := sha256.Sum256([]byte(value))
+	return hex.EncodeToString(sum[:])
 }

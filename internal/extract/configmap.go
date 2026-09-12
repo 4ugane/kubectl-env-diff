@@ -25,6 +25,12 @@ func ConfigMap(cm *corev1.ConfigMap) model.ConfigMap {
 
 	for k, v := range cm.Data {
 		out.Data[k] = redact.Value(k, v)
+		if redact.IsSensitive(k) {
+			if out.Fingerprints == nil {
+				out.Fingerprints = make(map[string]string, len(cm.Data))
+			}
+			out.Fingerprints[k] = redact.Fingerprint(v)
+		}
 	}
 	for k, v := range cm.BinaryData {
 		sum := sha256.Sum256(v)

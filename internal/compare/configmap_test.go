@@ -11,6 +11,49 @@ func cm(name string, data map[string]string) model.ConfigMap {
 	return model.ConfigMap{Kind: model.KindConfigMap, Name: name, Data: data}
 }
 
+// Masked ConfigMap entries carry the same placeholder text on both sides, so
+// equality must be decided by fingerprint, never by the placeholder string —
+// otherwise a rotated credential in a ConfigMap silently vanishes.
+func TestConfigMapMaskedKeyDiffersByFingerprint(t *testing.T) {
+	a := model.ConfigMap{Kind: model.KindConfigMap, Name: "app-config",
+		Data:         map[string]string{"CLIENT_SECRET": "<redacted>"},
+		Fingerprints: map[string]string{"CLIENT_SECRET": "fp-staging"},
+	}
+	b := model.ConfigMap{Kind: model.KindConfigMap, Name: "app-config",
+		Data:         map[string]string{"CLIENT_SECRET": "<redacted>"},
+		Fingerprints: map[string]string{"CLIENT_SECRET": "fp-prod"},
+	}
+
+	diffs := ConfigMap(Pair{Kind: model.KindConfigMap, Name: "app-config", FromCM: &a, ToCM: &b})
+	d := find(diffs, "data.CLIENT_SECRET")
+	if d == nil {
+		t.Fatalf("differing fingerprints should be reported as drift, got %+v", diffs)
+	}
+	if !d.Redacted {
+		t.Error("masked key diff should be flagged Redacted")
+	}
+	if d.From != "<redacted>" || d.To != "<redacted>" {
+		t.Errorf("masked diff must show only the placeholder, got %q -> %q", d.From, d.To)
+	}
+}
+
+// The same fingerprint on both sides means the underlying secret did not
+// change, so no diff should be reported even though we cannot see the value.
+func TestConfigMapMaskedKeySameFingerprintNoDiff(t *testing.T) {
+	a := model.ConfigMap{Kind: model.KindConfigMap, Name: "app-config",
+		Data:         map[string]string{"CLIENT_SECRET": "<redacted>"},
+		Fingerprints: map[string]string{"CLIENT_SECRET": "fp-same"},
+	}
+	b := model.ConfigMap{Kind: model.KindConfigMap, Name: "app-config",
+		Data:         map[string]string{"CLIENT_SECRET": "<redacted>"},
+		Fingerprints: map[string]string{"CLIENT_SECRET": "fp-same"},
+	}
+
+	if diffs := ConfigMap(Pair{Kind: model.KindConfigMap, Name: "app-config", FromCM: &a, ToCM: &b}); len(diffs) != 0 {
+		t.Errorf("equal fingerprints should produce no diff, got %+v", diffs)
+	}
+}
+
 func TestConfigMapKeyDiffs(t *testing.T) {
 	a := cm("app-config", map[string]string{"LOG_LEVEL": "debug", "ONLY_FROM": "1"})
 	b := cm("app-config", map[string]string{"LOG_LEVEL": "info", "ONLY_TO": "2"})

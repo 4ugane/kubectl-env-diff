@@ -1,6 +1,9 @@
 package redact
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestIsSensitive(t *testing.T) {
 	sensitive := []string{
@@ -67,5 +70,17 @@ func TestValue(t *testing.T) {
 	}
 	if got := Value("DB_PASSWORD", ""); got != Placeholder {
 		t.Errorf("empty sensitive value must still be masked, got %q", got)
+	}
+}
+
+func TestFingerprint(t *testing.T) {
+	if got := Fingerprint("hunter2"); got != Fingerprint("hunter2") {
+		t.Errorf("fingerprint must be stable for equal input, got %q vs %q", got, Fingerprint("hunter2"))
+	}
+	if Fingerprint("hunter2") == Fingerprint("hunter3") {
+		t.Error("fingerprint must differ for different input")
+	}
+	if got := Fingerprint("hunter2"); strings.Contains(got, "hunter2") {
+		t.Errorf("fingerprint must not contain the raw value, got %q", got)
 	}
 }

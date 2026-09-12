@@ -83,7 +83,10 @@ func envValue(e corev1.EnvVar) model.EnvValue {
 	}
 
 	if redact.IsSensitive(e.Name) {
-		return model.EnvValue{Kind: model.EnvInline, Value: redact.Placeholder, Redacted: true}
+		return model.EnvValue{
+			Kind: model.EnvInline, Value: redact.Placeholder, Redacted: true,
+			Fingerprint: redact.Fingerprint(e.Value),
+		}
 	}
 	return model.EnvValue{Kind: model.EnvInline, Value: e.Value}
 }

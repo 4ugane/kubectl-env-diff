@@ -52,3 +52,27 @@ func TestConfigMapRedactsSensitiveKeys(t *testing.T) {
 		t.Error("KEYCLOAK_URL must not be redacted")
 	}
 }
+
+// A masked ConfigMap key still carries a fingerprint distinguishing it from a
+// different secret under the same key, and a non-sensitive key gets none.
+func TestConfigMapMaskedKeyCarriesFingerprint(t *testing.T) {
+	a := ConfigMap(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "app-config", Namespace: "web"},
+		Data:       map[string]string{"CLIENT_SECRET": "cs-staging", "LOG_LEVEL": "debug"},
+	})
+	b := ConfigMap(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "app-config", Namespace: "web"},
+		Data:       map[string]string{"CLIENT_SECRET": "cs-prod"},
+	})
+
+	fpA, fpB := a.Fingerprints["CLIENT_SECRET"], b.Fingerprints["CLIENT_SECRET"]
+	if fpA == "" || fpB == "" {
+		t.Fatal("masked key should carry a non-empty fingerprint")
+	}
+	if fpA == fpB {
+		t.Error("different secrets must produce different fingerprints")
+	}
+	if _, ok := a.Fingerprints["LOG_LEVEL"]; ok {
+		t.Error("non-sensitive key must not carry a fingerprint")
+	}
+}

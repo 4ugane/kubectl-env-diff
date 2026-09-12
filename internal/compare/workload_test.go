@@ -185,3 +185,28 @@ func TestWorkloadRedactedValueNeverShown(t *testing.T) {
 		t.Errorf("equal redacted values should produce no diff, got %+v", diffs)
 	}
 }
+
+// A rotated credential must still be detected as drift, without its value
+// ever appearing: two redacted env values with different fingerprints (the
+// underlying secret differs) must be reported as changed, marked Redacted,
+// and never show anything but the placeholder text.
+func TestWorkloadRedactedValueDiffersByFingerprint(t *testing.T) {
+	a := model.Workload{Kind: model.KindDeployment, Name: "api", Replicas: 1,
+		Containers: []model.Container{{Name: "api", Env: map[string]model.EnvValue{
+			"DB_PASSWORD": {Kind: model.EnvInline, Value: "<redacted>", Redacted: true, Fingerprint: "fp-staging"}}}}}
+	b := model.Workload{Kind: model.KindDeployment, Name: "api", Replicas: 1,
+		Containers: []model.Container{{Name: "api", Env: map[string]model.EnvValue{
+			"DB_PASSWORD": {Kind: model.EnvInline, Value: "<redacted>", Redacted: true, Fingerprint: "fp-prod"}}}}}
+
+	diffs := Workload(Pair{Kind: model.KindDeployment, Name: "api", From: &a, To: &b})
+	d := find(diffs, "container[api].env.DB_PASSWORD")
+	if d == nil {
+		t.Fatalf("differing fingerprints should be reported as drift, got %+v", diffs)
+	}
+	if !d.Redacted {
+		t.Error("differing redacted value should be flagged Redacted")
+	}
+	if d.From != "<redacted>" || d.To != "<redacted>" {
+		t.Errorf("redacted diff must show only the placeholder, got %q -> %q", d.From, d.To)
+	}
+}

@@ -1,6 +1,7 @@
 package extract
 
 import (
+	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -116,6 +117,27 @@ func TestContainerRedactsInlineSecrets(t *testing.T) {
 	}
 	if got.Env["KEYCLOAK_URL"].Value != "https://sso.example.com" {
 		t.Error("KEYCLOAK_URL must not be redacted")
+	}
+}
+
+// A redacted value still carries a fingerprint so that two different
+// credentials are not mistaken for the same one downstream, but the
+// fingerprint itself must never reconstruct the raw value.
+func TestContainerRedactedValueCarriesFingerprint(t *testing.T) {
+	a := Container(corev1.Container{Name: "api",
+		Env: []corev1.EnvVar{{Name: "DB_PASSWORD", Value: "staging-secret"}}})
+	b := Container(corev1.Container{Name: "api",
+		Env: []corev1.EnvVar{{Name: "DB_PASSWORD", Value: "prod-secret"}}})
+
+	fpA, fpB := a.Env["DB_PASSWORD"].Fingerprint, b.Env["DB_PASSWORD"].Fingerprint
+	if fpA == "" || fpB == "" {
+		t.Fatal("redacted value should carry a non-empty fingerprint")
+	}
+	if fpA == fpB {
+		t.Error("different secrets must produce different fingerprints")
+	}
+	if strings.Contains(fpA, "staging-secret") {
+		t.Error("fingerprint must not contain the raw value")
 	}
 }
 

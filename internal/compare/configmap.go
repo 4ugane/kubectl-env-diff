@@ -32,15 +32,33 @@ func ConfigMap(p Pair) []model.Difference {
 	for _, k := range unionKeys(p.FromCM.Data, p.ToCM.Data) {
 		fv, okF := p.FromCM.Data[k]
 		tv, okT := p.ToCM.Data[k]
+		ffp, fMasked := p.FromCM.Fingerprints[k]
+		tfp, tMasked := p.ToCM.Fingerprints[k]
+		masked := fMasked || tMasked
 		path := "data." + k
 		switch {
 		case !okT:
-			diffs = append(diffs, base(path, model.MissingInTo, fv, ""))
+			d := base(path, model.MissingInTo, fv, "")
+			d.Redacted = masked
+			diffs = append(diffs, d)
 		case !okF:
-			diffs = append(diffs, base(path, model.MissingInFrom, "", tv))
-		case fv != tv:
+			d := base(path, model.MissingInFrom, "", tv)
+			d.Redacted = masked
+			diffs = append(diffs, d)
+		default:
+			// Masked entries compare by fingerprint, never by their shared
+			// placeholder text, so a differing credential in a ConfigMap is
+			// still detected as different rather than silently vanishing.
+			equal := fv == tv
+			if masked {
+				equal = ffp == tfp
+			}
+			if equal {
+				continue
+			}
 			d := base(path, model.ValueChanged, fv, tv)
-			if isMultiline(fv) || isMultiline(tv) {
+			d.Redacted = masked
+			if !masked && (isMultiline(fv) || isMultiline(tv)) {
 				d.Multiline = true
 				d.From, d.To = changedLines(fv, tv)
 			}

@@ -151,7 +151,7 @@ func envDiff(base baseFn, prefix string, f, t map[string]model.EnvValue) []model
 			d := base(path, model.MissingInFrom, "", tv.Display())
 			d.Redacted = tv.Redacted
 			diffs = append(diffs, d)
-		case fv.Kind != tv.Kind || fv.Display() != tv.Display():
+		case fv.Kind != tv.Kind || !fv.Equal(tv):
 			d := base(path, model.ValueChanged, fv.Display(), tv.Display())
 			d.Redacted = fv.Redacted || tv.Redacted
 			diffs = append(diffs, d)
