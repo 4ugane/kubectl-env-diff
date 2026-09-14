@@ -6,96 +6,153 @@
 <title>env-diff: {{.Summary.FromContext}} to {{.Summary.ToContext}}</title>
 <style>
 :root {
-  --bg: #fff; --fg: #1a1a1a; --muted: #666; --line: #e2e2e2;
-  --drift: #b91c1c; --miss: #b45309; --ok: #15803d;
-  --s0: #f6f6f6; --s1: #fee2e2; --s2: #fca5a5; --s3: #f87171; --s4: #dc2626;
+  --bg: #f4f5f6; --surface: #fff; --fg: #14171a; --muted: #5b6472;
+  --line: #dfe3e6; --line-strong: #c7cdd4;
+  --changed: #a6193f; --changed-soft: #f7dde3;
+  --added: #0f766e; --added-soft: #d7f0ec;
+  --removed: #92400e; --removed-soft: #f7e6d2;
+  --ok: #15803d; --ok-soft: #dcf3e3;
+  --s0: #eceef0; --s1: #f6dbe1; --s2: #ecb3c1; --s3: #d5667f; --s4: #a6193f;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #17181a; --fg: #e8e8e8; --muted: #9a9a9a; --line: #2e3033;
-    --drift: #f87171; --miss: #fbbf24; --ok: #4ade80;
-    --s0: #212325; --s1: #4c1d1d; --s2: #7f1d1d; --s3: #b91c1c; --s4: #ef4444;
+    --bg: #101316; --surface: #181c20; --fg: #e7eaec; --muted: #8d99a3;
+    --line: #292f34; --line-strong: #3a434a;
+    --changed: #e8637f; --changed-soft: #3a1620;
+    --added: #4fd6c6; --added-soft: #113330;
+    --removed: #e0a54a; --removed-soft: #3a2a12;
+    --ok: #4ade80; --ok-soft: #123321;
+    --s0: #1c2126; --s1: #3a1c24; --s2: #5c2530; --s3: #8a3348; --s4: #e8637f;
   }
 }
 * { box-sizing: border-box; }
 body {
-  margin: 0; padding: 2rem 1.25rem; background: var(--bg); color: var(--fg);
-  font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 15px/1.6 var(--font-sans); -webkit-font-smoothing: antialiased;
 }
-main { max-width: 1180px; margin: 0 auto; }
-h1 { font-size: 1.3rem; margin: 0 0 .35rem; font-weight: 650; }
-h2 { font-size: 1rem; margin: 2.25rem 0 .75rem; font-weight: 650; }
-.ctx { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9rem; }
-.sum { color: var(--muted); margin: 0 0 1.5rem; }
-.sum b { color: var(--fg); }
+main { max-width: 68rem; margin: 0 auto; padding: 3rem 1.5rem 4rem; }
+.kicker {
+  font: 700 .72rem/1 var(--font-sans); text-transform: uppercase; letter-spacing: .1em;
+  color: var(--muted); margin: 0 0 .6rem;
+}
+h1 {
+  font: 600 1.5rem/1.35 var(--font-mono); letter-spacing: -.01em;
+  margin: 0 0 1.75rem; text-wrap: balance; word-break: break-word;
+}
+h1 .arrow { font-family: var(--font-sans); color: var(--muted); padding: 0 .5rem; }
+h2 {
+  font: 700 .78rem/1 var(--font-sans); text-transform: uppercase; letter-spacing: .08em;
+  color: var(--muted); margin: 2.75rem 0 .9rem; padding-bottom: .6rem;
+  border-bottom: 1px solid var(--line-strong);
+}
+.stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 1px; background: var(--line); border: 1px solid var(--line);
+  border-radius: 8px; overflow: hidden; margin: 0 0 2.5rem;
+}
+.stat { background: var(--surface); padding: .9rem 1.1rem; }
+.stat b {
+  display: block; font: 600 1.5rem/1 var(--font-mono);
+  font-variant-numeric: tabular-nums; margin-bottom: .3rem;
+}
+.stat span { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.stat.changed b { color: var(--changed); }
+.stat.ok b { color: var(--ok); }
 .warn {
-  border-left: 3px solid var(--drift); background: var(--s1);
-  padding: .8rem 1rem; margin: 0 0 1.5rem; border-radius: 0 4px 4px 0;
+  border: 1px dashed var(--removed); border-radius: 8px;
+  padding: 1rem 1.2rem; margin: 0 0 2rem; background: var(--removed-soft);
 }
-.warn p { margin: 0 0 .4rem; font-weight: 600; }
+.warn .kicker { color: var(--removed); margin-bottom: .4rem; }
+.warn .lede { margin: 0 0 .5rem; font-weight: 600; }
 .warn ul { margin: 0; padding-left: 1.2rem; }
-.wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; }
-table { border-collapse: collapse; width: 100%; font-size: .875rem; }
-th, td {
-  text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--line);
-  vertical-align: top;
+.warn .note { margin: .6rem 0 0; color: var(--muted); font-weight: 400; }
+.wrap {
+  overflow-x: auto; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface);
 }
-th { font-weight: 600; color: var(--muted); white-space: nowrap; }
-tr:last-child td { border-bottom: 0; }
+table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+th, td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+thead th {
+  font: 600 .68rem/1 var(--font-sans); text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); background: var(--bg); white-space: nowrap;
+}
+tbody tr:last-child td { border-bottom: 0; }
 td.path, td.val {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem;
-  word-break: break-word; max-width: 24rem;
+  font-family: var(--font-mono); font-size: .8rem; word-break: break-word; max-width: 22rem;
 }
-td.from { color: var(--muted); }
-td.to { color: var(--drift); }
+td.val.from { color: var(--muted); }
+td.val.to { color: var(--fg); font-weight: 600; }
 .tag {
-  display: inline-block; font-size: .7rem; padding: .1rem .4rem;
-  border-radius: 3px; background: var(--s1); color: var(--drift);
-  text-transform: uppercase; letter-spacing: .03em;
+  display: inline-block; font: 700 .66rem/1 var(--font-sans); letter-spacing: .04em;
+  text-transform: uppercase; padding: .28rem .5rem; border-radius: 4px; white-space: nowrap;
 }
-.tag.exp { background: var(--s0); color: var(--muted); }
-.heat td, .heat th { text-align: center; padding: .4rem .5rem; }
+.tag-changed { background: var(--changed-soft); color: var(--changed); }
+.tag-added { background: var(--added-soft); color: var(--added); }
+.tag-removed { background: var(--removed-soft); color: var(--removed); }
+.tag-expected { background: var(--line); color: var(--muted); }
+.heat th, .heat td { text-align: center; }
 .heat th:first-child, .heat td:first-child { text-align: left; }
+.heat th { text-transform: capitalize; }
 .cell {
-  display: block; min-width: 2rem; padding: .3rem 0; border-radius: 3px;
-  font-variant-numeric: tabular-nums;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 2.1rem; height: 1.8rem; border-radius: 5px;
+  font: 600 .78rem/1 var(--font-mono); font-variant-numeric: tabular-nums;
 }
 .s0 { background: var(--s0); color: var(--muted); }
-.s1 { background: var(--s1); } .s2 { background: var(--s2); }
-.s3 { background: var(--s3); color: #fff; } .s4 { background: var(--s4); color: #fff; }
+.s1 { background: var(--s1); color: var(--changed); }
+.s2 { background: var(--s2); color: #1a0006; }
+.s3 { background: var(--s3); color: #fff; }
+.s4 { background: var(--s4); color: #fff; }
+.legend { display: flex; align-items: center; gap: .4rem; margin: .8rem 0 0; font-size: .78rem; color: var(--muted); }
+.legend .cell { min-width: 1.6rem; height: 1.5rem; font-size: .7rem; }
+.legend .note { margin-left: .3rem; }
 #filter {
-  width: 100%; max-width: 22rem; padding: .45rem .6rem; margin: 0 0 .75rem;
-  border: 1px solid var(--line); border-radius: 5px;
-  background: var(--bg); color: var(--fg); font-size: .875rem;
+  width: 100%; max-width: 22rem; padding: .55rem .8rem; margin: 0 0 1rem;
+  border: 1px solid var(--line-strong); border-radius: 6px;
+  background: var(--surface); color: var(--fg); font: .875rem var(--font-sans);
 }
-.none { color: var(--ok); font-weight: 600; }
-ul.miss { list-style: none; padding: 0; margin: 0; }
+#filter:focus-visible { outline: 2px solid var(--changed); outline-offset: 1px; }
+.none {
+  color: var(--ok); font-weight: 700; padding: 1rem 1.2rem;
+  border: 1px solid var(--ok); border-radius: 8px; background: var(--ok-soft);
+}
+ul.miss { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
 ul.miss li {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: .85rem; padding: .2rem 0; color: var(--miss);
+  font-family: var(--font-mono); font-size: .85rem; color: var(--removed);
+  padding: .4rem .7rem; background: var(--removed-soft); border-radius: 5px; width: fit-content;
 }
-footer { margin-top: 2.5rem; color: var(--muted); font-size: .78rem; }
+footer {
+  margin-top: 3rem; padding-top: 1.2rem; border-top: 1px solid var(--line);
+  color: var(--muted); font-size: .78rem;
+  display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+}
+footer .brand { font-family: var(--font-mono); }
 </style>
 </head>
 <body>
 <main>
-  <h1>env-diff</h1>
-  <p class="ctx">{{.Summary.FromContext}}/{{.Summary.FromNamespace}}
-    &rarr; {{.Summary.ToContext}}/{{.Summary.ToNamespace}}</p>
-  <p class="sum">
-    <b>{{.Summary.Pairs}}</b> resources &middot;
-    {{.Summary.Identical}} identical &middot;
-    <b>{{.Summary.Drifted}}</b> drifted &middot;
-    {{add .Summary.MissingInFrom .Summary.MissingInTo}} missing
-  </p>
+  <p class="kicker">kubectl env-diff report</p>
+  <h1>{{.Summary.FromContext}}/{{.Summary.FromNamespace}}
+    <span class="arrow">&rarr;</span>
+    {{.Summary.ToContext}}/{{.Summary.ToNamespace}}</h1>
+
+  <div class="stats">
+    <div class="stat"><b>{{.Summary.Pairs}}</b><span>resources</span></div>
+    <div class="stat ok"><b>{{.Summary.Identical}}</b><span>identical</span></div>
+    <div class="stat changed"><b>{{.Summary.Drifted}}</b><span>drifted</span></div>
+    <div class="stat"><b>{{add .Summary.MissingInFrom .Summary.MissingInTo}}</b><span>missing</span></div>
+  </div>
 
   {{if .Incomplete}}
   <div class="warn">
-    <p>This comparison is incomplete.</p>
+    <p class="kicker">Partial result</p>
+    <p class="lede">This comparison is incomplete.</p>
     <ul>
       {{range .Summary.Skipped}}<li>{{.Kind}}: {{.Reason}}</li>{{end}}
     </ul>
-    <p style="margin:.5rem 0 0;font-weight:400">Treat everything below as partial.</p>
+    <p class="note">Treat everything below as partial.</p>
   </div>
   {{end}}
 
@@ -122,6 +179,14 @@ footer { margin-top: 2.5rem; color: var(--muted); font-size: .78rem; }
       </tfoot>
     </table>
   </div>
+  <p class="legend">
+    <span class="cell s0">&middot;</span>
+    <span class="cell s1">1</span>
+    <span class="cell s2">2</span>
+    <span class="cell s3">3</span>
+    <span class="cell s4">4+</span>
+    <span class="note">differences per category, darker is more</span>
+  </p>
   {{end}}
 
   {{if .Rows}}
@@ -144,8 +209,8 @@ footer { margin-top: 2.5rem; color: var(--muted); font-size: .78rem; }
           <td class="path">{{.Path}}</td>
           <td class="val from">{{.From}}</td>
           <td class="val to">{{.To}}</td>
-          <td>{{if eq .Severity "Expected"}}<span class="tag exp">expected</span>
-              {{else}}<span class="tag">{{.Type}}</span>{{end}}</td>
+          <td>{{if eq .Severity "Expected"}}<span class="tag tag-expected">expected</span>
+              {{else}}<span class="tag {{typeClass .Type}}">{{typeLabel .Type}}</span>{{end}}</td>
         </tr>
         {{end}}
       </tbody>
@@ -168,10 +233,12 @@ footer { margin-top: 2.5rem; color: var(--muted); font-size: .78rem; }
   {{end}}
 
   <footer>
-    {{if and (not .ShowExpected) .Summary.ExpectedHidden}}
-      {{.Summary.ExpectedHidden}} expected difference(s) hidden (image tag, replicas).
-    {{end}}
-    Generated by kubectl-env-diff. Secret values are never read.
+    <span>
+      {{if and (not .ShowExpected) .Summary.ExpectedHidden}}
+        {{.Summary.ExpectedHidden}} expected difference(s) hidden (image tag, replicas).
+      {{end}}
+    </span>
+    <span class="brand">kubectl-env-diff &middot; secret values are never read</span>
   </footer>
 </main>
 <script>

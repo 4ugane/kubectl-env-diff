@@ -140,6 +140,37 @@ func TestHTMLIncludesHeatmapWhenEligible(t *testing.T) {
 	}
 }
 
+// Badges show a short human word, not the raw Go type name, so a reader never
+// has to decode "MissingInFrom" to know a key was added.
+func TestHTMLBadgesUseHumanLabels(t *testing.T) {
+	r := Report{
+		Summary: Summary{Meta: Meta{FromContext: "a", ToContext: "b"}, Paired: 1, Drifted: 1},
+		Differences: []model.Difference{
+			{Kind: model.KindConfigMap, Name: "cfg", Path: "data.NEW_KEY",
+				Type: model.MissingInFrom, Severity: model.SeverityDrift, To: "v"},
+			{Kind: model.KindConfigMap, Name: "cfg", Path: "data.OLD_KEY",
+				Type: model.MissingInTo, Severity: model.SeverityDrift, From: "v"},
+			{Kind: model.KindConfigMap, Name: "cfg", Path: "data.CHANGED_KEY",
+				Type: model.ValueChanged, Severity: model.SeverityDrift, From: "a", To: "b"},
+		},
+	}
+	var buf bytes.Buffer
+	if err := HTML(&buf, r, false); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	for _, raw := range []string{"MissingInFrom", "MissingInTo", "ValueChanged"} {
+		if strings.Contains(out, raw) {
+			t.Errorf("raw type name %q leaked into badge text, want a human label", raw)
+		}
+	}
+	for _, label := range []string{"added", "removed", "changed"} {
+		if !strings.Contains(out, label) {
+			t.Errorf("expected human label %q in output", label)
+		}
+	}
+}
+
 func TestHTMLSkippedWarning(t *testing.T) {
 	r := Report{Summary: Summary{
 		Meta:    Meta{FromContext: "staging", ToContext: "prod"},

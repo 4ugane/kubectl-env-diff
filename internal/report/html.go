@@ -112,9 +112,11 @@ type htmlData struct {
 // ConfigMap contents are untrusted input and can contain markup.
 func HTML(w io.Writer, r Report, showExpected bool) error {
 	tmpl, err := template.New("template.html").Funcs(template.FuncMap{
-		"shade": shade,
-		"count": func(m map[string]int, k string) int { return m[k] },
-		"add":   func(a, b int) int { return a + b },
+		"shade":     shade,
+		"count":     func(m map[string]int, k string) int { return m[k] },
+		"add":       func(a, b int) int { return a + b },
+		"typeLabel": typeLabel,
+		"typeClass": typeClass,
 	}).ParseFS(templateFS, "template.html")
 	if err != nil {
 		return err
@@ -145,6 +147,31 @@ func HTML(w io.Writer, r Report, showExpected bool) error {
 		})
 	}
 	return tmpl.Execute(w, data)
+}
+
+// typeLabel renders a difference's type as a short, human-readable word for
+// the report's badges, instead of the raw Go constant name.
+func typeLabel(t model.DiffType) string {
+	switch t {
+	case model.MissingInFrom:
+		return "added"
+	case model.MissingInTo:
+		return "removed"
+	default:
+		return "changed"
+	}
+}
+
+// typeClass maps a difference's type to the CSS class that colors its badge.
+func typeClass(t model.DiffType) string {
+	switch t {
+	case model.MissingInFrom:
+		return "tag-added"
+	case model.MissingInTo:
+		return "tag-removed"
+	default:
+		return "tag-changed"
+	}
 }
 
 // shade maps a count to one of five intensity buckets for the heatmap cells.
