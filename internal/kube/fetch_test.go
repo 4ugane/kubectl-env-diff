@@ -48,6 +48,28 @@ func TestFetchAllKinds(t *testing.T) {
 	}
 }
 
+// kube-root-ca.crt is injected into every namespace by kube-controller-manager
+// and differs by cluster, never by intent - it must never appear as drift.
+func TestFetchSkipsSystemRootCAConfigMap(t *testing.T) {
+	cs := fake.NewSimpleClientset(
+		&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "kube-root-ca.crt", Namespace: "web"},
+			Data: map[string]string{"ca.crt": "-----BEGIN CERTIFICATE-----..."}},
+		&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "app-config", Namespace: "web"},
+			Data: map[string]string{"K": "v"}},
+	)
+
+	snap, err := Fetch(context.Background(), cs, "staging", "web", AllKinds)
+	if err != nil {
+		t.Fatalf("Fetch() error = %v", err)
+	}
+	if len(snap.ConfigMaps) != 1 {
+		t.Fatalf("got %d configmaps, want 1 (kube-root-ca.crt must be filtered)", len(snap.ConfigMaps))
+	}
+	if snap.ConfigMaps[0].Name != "app-config" {
+		t.Errorf("unexpected configmap survived filtering: %q", snap.ConfigMaps[0].Name)
+	}
+}
+
 // Wrong-namespace objects must not leak into the snapshot.
 func TestFetchFiltersByNamespace(t *testing.T) {
 	cs := fake.NewSimpleClientset(

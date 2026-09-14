@@ -18,6 +18,16 @@ const pageSize = 500
 // AllKinds is the default kind selection.
 var AllKinds = []model.Kind{model.KindDeployment, model.KindStatefulSet, model.KindConfigMap}
 
+// systemConfigMaps are cluster-managed, not application config: every
+// namespace in a conformant Kubernetes cluster gets its own kube-root-ca.crt
+// (the CA bundle for bound service account tokens, injected by
+// kube-controller-manager since v1.20). Comparing two distinct physical
+// clusters would otherwise always report it as drift - the CA differs by
+// cluster, never by intent - with no action a reader could ever take on it.
+var systemConfigMaps = map[string]bool{
+	"kube-root-ca.crt": true,
+}
+
 // Fetch reads the requested kinds from one namespace.
 //
 // A permission failure on one kind is recorded in Snapshot.Skipped rather than
@@ -65,6 +75,9 @@ func Fetch(ctx context.Context, cs kubernetes.Interface,
 				return "", err
 			}
 			for i := range list.Items {
+				if systemConfigMaps[list.Items[i].Name] {
+					continue
+				}
 				snap.ConfigMaps = append(snap.ConfigMaps, extract.ConfigMap(&list.Items[i]))
 			}
 			return list.Continue, nil
