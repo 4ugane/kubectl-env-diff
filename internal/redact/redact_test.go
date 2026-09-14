@@ -1,6 +1,8 @@
 package redact
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"strings"
 	"testing"
 )
@@ -82,5 +84,15 @@ func TestFingerprint(t *testing.T) {
 	}
 	if got := Fingerprint("hunter2"); strings.Contains(got, "hunter2") {
 		t.Errorf("fingerprint must not contain the raw value, got %q", got)
+	}
+}
+
+// TestFingerprintIsKeyedNotBareHash guards against silently regressing to an
+// unsalted hash: a bare SHA-256 is dictionary/rainbow-table crackable for a
+// low-entropy secret, which a per-process-keyed HMAC is not.
+func TestFingerprintIsKeyedNotBareHash(t *testing.T) {
+	bare := sha256.Sum256([]byte("hunter2"))
+	if got := Fingerprint("hunter2"); got == hex.EncodeToString(bare[:]) {
+		t.Error("fingerprint must not equal a bare unsalted SHA-256 of the input")
 	}
 }

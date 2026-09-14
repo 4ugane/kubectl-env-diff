@@ -38,7 +38,7 @@ type EnvValue struct {
 	Source      string
 	Optional    bool
 	Redacted    bool
-	Fingerprint string
+	Fingerprint string `json:"-"`
 }
 
 // Equal reports whether two EnvValues represent the same underlying value.
@@ -123,7 +123,7 @@ type ConfigMap struct {
 	Name         string
 	Namespace    string
 	Data         map[string]string
-	Fingerprints map[string]string
+	Fingerprints map[string]string `json:"-"`
 	Immutable    bool
 }
 

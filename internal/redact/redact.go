@@ -7,9 +7,12 @@
 package redact
 
 import (
+	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"strings"
+	"sync"
 	"unicode"
 )
 
@@ -89,12 +92,29 @@ func Value(key, value string) string {
 	return value
 }
 
+// fingerprintKey is generated once per process from crypto/rand and never
+// leaves this package. Keying the fingerprint means it is only ever
+// comparable within a single run, and a bare offline hash of a guessed
+// low-entropy secret (e.g. a short password) can never be checked against it -
+// unlike an unkeyed hash, which would let that guess be confirmed for free.
+var fingerprintKey = sync.OnceValue(func() []byte {
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		panic("redact: could not generate fingerprint key: " + err.Error())
+	}
+	return key
+})
+
 // Fingerprint returns a one-way, non-reversible marker for a sensitive value:
-// the same input always yields the same fingerprint, and different inputs
-// (almost certainly) yield different ones. It exists purely so that a
-// comparison can tell two masked values apart without either raw value ever
-// being stored, displayed, or otherwise recoverable from the fingerprint.
+// the same input always yields the same fingerprint within one process run,
+// and different inputs (almost certainly) yield different ones. It exists
+// purely so that a comparison can tell two masked values apart without either
+// raw value ever being stored, displayed, or otherwise recoverable from the
+// fingerprint - and, because it is keyed with a random value discarded at
+// process exit, without being usable to test a guess against a value from a
+// different run either.
 func Fingerprint(value string) string {
-	sum := sha256.Sum256([]byte(value))
-	return hex.EncodeToString(sum[:])
+	mac := hmac.New(sha256.New, fingerprintKey())
+	mac.Write([]byte(value))
+	return hex.EncodeToString(mac.Sum(nil))
 }
