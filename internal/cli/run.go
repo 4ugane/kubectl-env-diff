@@ -81,6 +81,14 @@ func Run(ctx context.Context, o *Options, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	skipped := append(append([]model.SkipNote{}, fromSnap.Skipped...), toSnap.Skipped...)
+	skippedKinds := map[model.Kind]bool{}
+	for _, s := range skipped {
+		skippedKinds[s.Kind] = true
+	}
+	fromSnap = fromSnap.WithoutKinds(skippedKinds)
+	toSnap = toSnap.WithoutKinds(skippedKinds)
+
 	pairs, err := compare.Pairs(fromSnap, toSnap, compare.Options{
 		Name:      o.Name,
 		FromName:  o.FromName,
@@ -93,8 +101,6 @@ func Run(ctx context.Context, o *Options, stdout, stderr io.Writer) int {
 	}
 
 	diffs := classify.Apply(compare.DiffAll(pairs), cfg.Ignore)
-
-	skipped := append(append([]model.SkipNote{}, fromSnap.Skipped...), toSnap.Skipped...)
 	rep := report.Build(report.Meta{
 		FromContext: fromTarget.Context, FromNamespace: fromTarget.Namespace,
 		ToContext: toTarget.Context, ToNamespace: toTarget.Namespace,

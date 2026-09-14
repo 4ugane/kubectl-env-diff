@@ -3,15 +3,19 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 
 	"github.com/4ugane/kubectl-env-diff/internal/classify"
 	"github.com/4ugane/kubectl-env-diff/internal/compare"
@@ -65,12 +69,19 @@ func runComparison(t *testing.T, from, to []runtime.Object,
 		t.Fatalf("fetch to: %v", err)
 	}
 
+	skipped := append(append([]model.SkipNote{}, fromSnap.Skipped...), toSnap.Skipped...)
+	skippedKinds := map[model.Kind]bool{}
+	for _, s := range skipped {
+		skippedKinds[s.Kind] = true
+	}
+	fromSnap = fromSnap.WithoutKinds(skippedKinds)
+	toSnap = toSnap.WithoutKinds(skippedKinds)
+
 	pairs, err := compare.Pairs(fromSnap, toSnap, opts)
 	if err != nil {
 		t.Fatalf("pair: %v", err)
 	}
 	diffs := classify.Apply(compare.DiffAll(pairs), cfg.Ignore)
-	skipped := append(append([]model.SkipNote{}, fromSnap.Skipped...), toSnap.Skipped...)
 
 	return report.Build(report.Meta{
 		FromContext: "staging", FromNamespace: "web",
@@ -138,6 +149,76 @@ func TestEndToEndDriftDetected(t *testing.T) {
 	// Whole workload absent in prod.
 	if len(rep.Missing(model.MissingInTo)) != 1 {
 		t.Errorf("expected notifier reported missing, got %+v", rep.Missing(model.MissingInTo))
+	}
+}
+
+// A kind that is RBAC-forbidden on one side but readable on the other must
+// never be diffed at all: the skipped side has no data to say "absent", only
+// "unreadable", so reporting it as MissingIn* would be a false claim about a
+// resource that may well exist. Found live against two real kind clusters
+// with an asymmetric Role, not by any earlier unit test.
+func TestEndToEndSkippedKindNeverFalselyReportsMissing(t *testing.T) {
+	from := []runtime.Object{
+		deploy("api", "web", "acme/api:v1", 1, nil, "1Gi"),
+		&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "app-config", Namespace: "web"},
+			Data: map[string]string{"REGION": "us-east-1"}},
+	}
+	to := []runtime.Object{
+		deploy("api", "web", "acme/api:v1", 1, nil, "1Gi"),
+		&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "app-config", Namespace: "web"},
+			Data: map[string]string{"REGION": "us-east-1"}},
+	}
+
+	fromCS := fake.NewSimpleClientset(from...)
+	toCS := fake.NewSimpleClientset(to...)
+	// Only the "from" side loses ConfigMap access - exactly the asymmetric
+	// RBAC scenario that exposed the bug.
+	fromCS.PrependReactor("list", "configmaps",
+		func(k8stesting.Action) (bool, runtime.Object, error) {
+			return true, nil, apierrors.NewForbidden(
+				schema.GroupResource{Group: "", Resource: "configmaps"}, "",
+				errors.New("no permission"))
+		})
+
+	ctx := context.Background()
+	fromSnap, err := kube.Fetch(ctx, fromCS, "staging", "web", kube.AllKinds)
+	if err != nil {
+		t.Fatalf("fetch from: %v", err)
+	}
+	toSnap, err := kube.Fetch(ctx, toCS, "prod", "web", kube.AllKinds)
+	if err != nil {
+		t.Fatalf("fetch to: %v", err)
+	}
+
+	skipped := append(append([]model.SkipNote{}, fromSnap.Skipped...), toSnap.Skipped...)
+	skippedKinds := map[model.Kind]bool{}
+	for _, s := range skipped {
+		skippedKinds[s.Kind] = true
+	}
+	fromSnap = fromSnap.WithoutKinds(skippedKinds)
+	toSnap = toSnap.WithoutKinds(skippedKinds)
+
+	pairs, err := compare.Pairs(fromSnap, toSnap, compare.Options{})
+	if err != nil {
+		t.Fatalf("pair: %v", err)
+	}
+	diffs := classify.Apply(compare.DiffAll(pairs), (&config.Config{}).Ignore)
+	rep := report.Build(report.Meta{FromContext: "staging", FromNamespace: "web",
+		ToContext: "prod", ToNamespace: "web"}, pairs, diffs, skipped)
+
+	if !rep.Incomplete() {
+		t.Fatal("comparison should be reported incomplete")
+	}
+	if got := ExitCode(rep.HasDrift(), rep.Incomplete()); got != 1 {
+		t.Errorf("exit code = %d, want 1 (incomplete outranks drift/clean)", got)
+	}
+	for _, d := range rep.Differences {
+		if d.Kind == model.KindConfigMap {
+			t.Errorf("ConfigMap must not be diffed when its kind was skipped, got %+v", d)
+		}
+	}
+	if len(rep.Missing(model.MissingInFrom)) != 0 || len(rep.Missing(model.MissingInTo)) != 0 {
+		t.Error("a skipped kind must never produce a Missing claim on either side")
 	}
 }
 

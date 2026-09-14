@@ -152,3 +152,27 @@ type Snapshot struct {
 	ConfigMaps []ConfigMap
 	Skipped    []SkipNote
 }
+
+// WithoutKinds returns a copy of the snapshot with every resource of the
+// given kinds removed. A kind skipped (RBAC-forbidden, say) on either side of
+// a comparison has no trustworthy data on that side: diffing it against the
+// other side's real data would report a resource as "missing" when the truth
+// is simply "unreadable", which is worse than not reporting it at all. Call
+// this on BOTH sides with the union of both sides' skipped kinds, before
+// pairing, so a skipped kind is never diffed - only ever reported as skipped.
+func (s Snapshot) WithoutKinds(kinds map[Kind]bool) Snapshot {
+	out := s
+	out.Workloads = nil
+	for _, w := range s.Workloads {
+		if !kinds[w.Kind] {
+			out.Workloads = append(out.Workloads, w)
+		}
+	}
+	out.ConfigMaps = nil
+	for _, c := range s.ConfigMaps {
+		if !kinds[c.Kind] {
+			out.ConfigMaps = append(out.ConfigMaps, c)
+		}
+	}
+	return out
+}
