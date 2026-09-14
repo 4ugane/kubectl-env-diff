@@ -67,7 +67,7 @@ v1 kinds; when narrowed, a name filter applies within each selected kind.
 kubectl env-diff --from staging/web --to prod-au/web
 
 # one workload, same name both sides
-kubectl env-diff --from staging/web --to prod-au/web --name checkout
+kubectl env-diff --from staging/web --to prod-au/web --name api
 
 # names diverge — explicit pair
 kubectl env-diff --from staging/web --to prod/web \
@@ -207,7 +207,7 @@ First match wins, so the explicit case always beats the inferred case:
 
 ```go
 type Difference struct {
-    Kind, Name, Path string   // "container[checkout].resources.limits.memory"
+    Kind, Name, Path string   // "container[api].resources.limits.memory"
     From, To         string   // empty with a presence flag when absent
     Type             DiffType // ValueChanged | MissingInTo | MissingInFrom
     Severity         Severity // Drift | Expected
@@ -280,8 +280,8 @@ kubectl env-diff   staging/web → prod-au/web
 
 SUMMARY   12 workloads · 9 identical · 2 drifted · 1 missing
 
-DRIFT  Deployment/checkout
-  container[checkout]
+DRIFT  Deployment/api
+  container[api]
     env.FEATURE_FLAG_X            (missing)   →  true
     env.LOG_LEVEL                 debug       →  info
     env.DB_PASSWORD               <redacted>  →  <redacted, differs>
@@ -292,7 +292,7 @@ DRIFT  ConfigMap/app-config
     KAFKA_BROKERS                 (missing)   →  b-1.msk.internal:9092
 
 MISSING IN prod-au
-  Deployment/notifier
+  Deployment/worker
 
 2 expected differences hidden (image tag, replicas) — --show-expected
 ```
