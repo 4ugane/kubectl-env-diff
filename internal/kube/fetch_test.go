@@ -171,7 +171,7 @@ func TestParseTarget(t *testing.T) {
 		{"staging", "staging", "", false},
 		{"prod-au/web", "prod-au", "web", false},
 		{"", "", "", true},
-		{"/platform", "", "", true},
+		{"/web", "", "", true},
 		{"staging/", "", "", true},
 	}
 	for _, tc := range tests {

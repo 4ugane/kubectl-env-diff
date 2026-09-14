@@ -82,7 +82,7 @@ func TestEndToEndDriftDetected(t *testing.T) {
 	from := []runtime.Object{
 		deploy("checkout", "web", "acme/checkout:v1", 3,
 			map[string]string{"LOG_LEVEL": "debug"}, "4Gi"),
-		deploy("notifier", "web", "acme/hook:v1", 1, nil, "256Mi"),
+		deploy("notifier", "web", "acme/notifier:v1", 1, nil, "256Mi"),
 		&corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: "app-config", Namespace: "web"},
 			Data:       map[string]string{"REGION": "us-east-1"},

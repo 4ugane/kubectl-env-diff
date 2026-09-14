@@ -19,14 +19,14 @@ reports only the names and keys that pod specs reference.
 
 Exit codes: 0 no drift, 2 drift found, 1 tool error or incomplete comparison.`,
 		Example: `  # whole namespace
-  kubectl env-diff --from staging/web --to prod-au/web
+  kubectl env-diff --from staging/web --to prod/web
 
   # one workload, same name on both sides
-  kubectl env-diff --from staging/web --to prod/web --name checkout
+  kubectl env-diff --from staging/web --to prod/web --name api
 
   # names differ between environments
   kubectl env-diff --from staging/web --to prod/web \
-      --from-name test-staging --to-name test-prod
+      --from-name api-staging --to-name api-prod
 
   # shareable report
   kubectl env-diff --from staging/web --to prod/web --output html > drift.html`,

@@ -6,10 +6,10 @@ DRIFT  ConfigMap/app-config
   data.KAFKA_BROKERS                  (missing) -> b-1.msk.internal:9092
 
 DRIFT  Deployment/checkout
-  container[checkout].env.FEATURE_FLA…  (missing) -> true
-  container[checkout].env.DB_PASSWORD   <redacted> -> <redacted, differs>
-  container[checkout].env.LOG_LEVEL     debug -> info
-  container[checkout].resources.limit…  4Gi -> 512Mi
+  container[checkout].env.FEATURE_F…  (missing) -> true
+  container[checkout].env.DB_PASSWO…  <redacted> -> <redacted, differs>
+  container[checkout].env.LOG_LEVEL   debug -> info
+  container[checkout].resources.lim…  4Gi -> 512Mi
 
 MISSING IN prod-au/web
   Deployment/notifier
