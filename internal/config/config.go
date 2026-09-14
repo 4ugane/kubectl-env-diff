@@ -46,6 +46,9 @@ var knownKinds = map[string]bool{
 // named the file, a missing file is an error — silently ignoring it would apply
 // none of their rules while appearing to work.
 func Load(path string, explicit bool) (*Config, error) {
+	// #nosec G304 -- path is the user's own --config flag on their own local
+	// invocation, the same trust boundary as the whole command line (like
+	// --kubeconfig or git's --config); it never crosses a privilege boundary.
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) && !explicit {
