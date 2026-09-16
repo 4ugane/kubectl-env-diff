@@ -22,26 +22,26 @@ spec:
           os: darwin
           arch: arm64
       uri: https://github.com/4ugane/kubectl-env-diff/releases/download/v0.1.0/kubectl-env-diff_0.1.0_darwin_arm64.tar.gz
-      sha256: "<FILL FROM checksums.txt>"
+      sha256: "72effd31b2aee3107eec47c17e27d300a4abf8ccd32b2bfcfdc6a3692666243e"
       bin: kubectl-env_diff
     - selector:
         matchLabels:
           os: darwin
           arch: amd64
       uri: https://github.com/4ugane/kubectl-env-diff/releases/download/v0.1.0/kubectl-env-diff_0.1.0_darwin_amd64.tar.gz
-      sha256: "<FILL FROM checksums.txt>"
+      sha256: "a805b67945cfcaa38212f6041ef2c708b1790bb10913d0045ff95d2641c7a902"
       bin: kubectl-env_diff
     - selector:
         matchLabels:
           os: linux
           arch: amd64
       uri: https://github.com/4ugane/kubectl-env-diff/releases/download/v0.1.0/kubectl-env-diff_0.1.0_linux_amd64.tar.gz
-      sha256: "<FILL FROM checksums.txt>"
+      sha256: "e08b92ad24ec0eb71684107824eaaa6f710ed5395d7612909c81116b3253e076"
       bin: kubectl-env_diff
     - selector:
         matchLabels:
           os: linux
           arch: arm64
       uri: https://github.com/4ugane/kubectl-env-diff/releases/download/v0.1.0/kubectl-env-diff_0.1.0_linux_arm64.tar.gz
-      sha256: "<FILL FROM checksums.txt>"
+      sha256: "2f79a2ee5efe1c1d55f6352929bb6ce5b815f2862d7e3db1a8698ab220013de4"
       bin: kubectl-env_diff
